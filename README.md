@@ -1,14 +1,16 @@
 ================
 project structure:
+
     * data:
         - ptb // for ppl 
         - stb // for clf
     * models:
         - stackLSTM
     * utils:
-        - batchIterator
+        - batch_iterator
         - data_loader
         - ptb_loader
+        - snli_loader
         - misc
     * examples:
         - ptb
@@ -17,6 +19,7 @@ project structure:
 
 ================
 Preprocess: PtLoader
+
     @ func:
         - __init__          : init raw data path and data directory
         - load_data         : load the entire data
@@ -28,12 +31,13 @@ Preprocess: PtLoader
         - _replace_by_widx  : replace the leaves with word index
         - _convert_to_binary: special case - if there is only one word in the sentence, parser won't return a Tree but a string
         - tree_to_btree     : convert constituent tree to binarized tree
-        - proc: convert     : trees to list, including [x, a, p]
+        - proc              : trees to list, including [x, a, p]
         - _proc_single      : proc single sample to [xi, ai, pi]
 
 
 ===============
 Preprocess: SnilLoader
+
     @ func:
         - __init__          : init raw data path and data direcotry
         - load_data         : load the entire data
@@ -45,6 +49,7 @@ Preprocess: SnilLoader
 
 ===============
 HelperLayers: StackLSTM
+
     @ member:
         - W_[l|r|e]_to_[l|r|e|o|c]_s
         - b_[l|r|e|c|o]_s
