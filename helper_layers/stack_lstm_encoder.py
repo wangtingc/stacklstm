@@ -73,15 +73,9 @@ class StackLSTMEncoder(MergeLayer):
         self.grad_clipping = grad_clipping
         self.only_return_final = only_return_final
 
-
-        # The tracking LSTM can be simply modelled by a standard LSTM,
-        # although there are some considerations about inappropriate hierachical
-        # class structure.
-        l_in = InputLayer([None, None, 3*self.num_units_stack])
-        self.trackingLSTM = LSTMLayer(l_in, self.num_units_track, mask_input = l_m)
-
         self._add_stack_params(lg_s, rg_s, ig_s, og_s, c_s)
         self._add_track_params(ig_t, fg_t, og_t, c_t)
+
 
     def _add_stack_params(self, lg_s, rg_s, ig_s, og_s, c_s):
         num_units_stack = self.num_units_stack

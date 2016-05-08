@@ -19,7 +19,7 @@ from collections import Counter
 #   2. _convert_to_binary_tree: convert the original parse tree into
 #       binary unlabeled parse tree
 
-class PtLoader(DataLoader):
+class PtDecLoader(DataLoader):
     def __init__(self, data_path, parser_path, models_path, model_path):
         # init the data path
         super(PtLoader, self).__init__(data_path)
@@ -176,34 +176,37 @@ class PtLoader(DataLoader):
         """
         this function is used to preproc the tree data
         @ param: single tree for one sentence
-        @ rtype: x, a, p
+        @ rtype: x, p, f
+
+        x: output at each step, 0 for tree
+        p: if prediction at this step
+        f: father of each step
+        s: stack, save all the internal state
+        q: queue for extract f
         """
-        x, a, p, s, q = [], [], [], [0,], [] # s[0] is the left for init_state
-        self._traversal(tree, x, a, s, q, p)
-        #x = [ -1 if isinstance(node, Tree) else node for node in s ]
-        #a = [ 1 if isinstance(node, Tree) else 0 for node in s ]
-        return x, a, p
+        x, p, f, s, q = [], [], [], [], [-1]
+        self._traversal(tree, x, p, f, s, q)
+        return x[1:], p[1:], f[1:]
 
 
-    def _traversal(self, tree, x, a, s, q, p):
+    def _traversal(self, tree, x, p, f, s, q):
         if not isinstance(tree, Tree):
             x.append(tree)
-            a.append(0)
-            q0 = q[-1] if len(q) >= 1 else 0
-            q1 = q[-2] if len(q) >= 2 else 0
-            p.append((q0, q1))
-            s.append(tree)
-            q.append(len(s)-1)
+            p.append(1)
+            f.append(q[-1])
             return
-
-        for child in tree:
-            self._traversal(child, x, a, s, q, p)
         
         x.append(0)
-        a.append(1)
+        p.append(0)
+        f.append(q[-1])
         s.append(tree)
-        p.append((q.pop(), q.pop()))
         q.append(len(s)-1)
+
+        for i in tree:
+            self._traversal(i, x, p, f, s, q)
+
+        q.pop()
+
 
        
 if __name__ == '__main__':
@@ -212,7 +215,7 @@ if __name__ == '__main__':
     models_path = '/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/stanford-parser-3.5.2-models.jar'
     model_path = '/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/englishPCFG.ser.gz'
     loader = PtLoader(data_path, parser_path, models_path, model_path)
-    
+
     s = 'this is my house \n I can\'t believe how bad he is'
     data = loader._parse(s)
     loader._build_vocab(data, '../data/ptb/vocab.pkl')

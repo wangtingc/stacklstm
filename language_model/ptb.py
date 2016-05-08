@@ -5,30 +5,23 @@ import numpy as np
 from datetime import datetime
 import time
 
-from utils import snli_loader
+from utils import pt_dec_loader
 from utils import batch_iterator
 from utils import misc
-from models.stack_lstm_sim import StackLSTMSim
+from models.stack_lstm_lm import StackLSTMLM
 
 def init_params():
     params = {}
-    params['dataset'] = 'snli'
-    params['data_path'] = '../data/snli/'
+    params['dataset'] = 'ptb'
+    params['data_path'] = '../data/ptb_dec/'
     params['dim_emb'] = 300
-    params['num_units_stack'] = 512
-    params['num_units_track'] = 80
-    params['num_classes'] = 2
+    params['num_units'] = 512
     params['batch_size'] = 32
     params['num_epochs'] = 100
     params['valid_period'] = 1
     params['test_period'] = 1
     params['exp_time'] = str(datetime.now().strftime('%Y%m%d-%H%M'))
-    params['emb_dropout'] = 0.14
-    params['clf_dropout'] = 0.06
-    params['word_dropout'] = 0
     params['lr'] = 2e-3
-    params['lena'] = 3e-5
-    params['alpha'] = 3.9
     
     # paths
     params['save_dir'] = '../results/' + params['exp_time'] + '/'
@@ -40,7 +33,7 @@ def init_params():
 
 
 def train(params):
-    data_loader = snli_loader.SnliLoader(params['data_path'])
+    data_loader = pt_dec_loader.PtLoader(params['data_path'])
 
     params['num_samples_train'] = len(data_loader.train_data[0])
     params['num_samples_valid'] = len(data_loader.valid_data[0])
@@ -55,17 +48,11 @@ def train(params):
     it_test = batch_iterator.BatchIterator(params['num_samples_test'], params['batch_size'],\
                                            data_loader.test_data, False)
 
-    model = StackLSTMSim(num_units_stack=params['num_units_stack'],
-                         num_units_track=params['num_units_track'],
-                         num_classes=params['num_classes'],
+    model = StackLSTMLM(num_units=params['num_units'],
                          dict_size=data_loader.dict_size,
                          dim_emb=data_loader.dim_emb,
                          w_emb=data_loader.w_emb,
-                         emb_dropout=params['emb_dropout'],
-                         clf_dropout=params['clf_dropout'],
                          lr=params['lr'],
-                         lena=params['lena'],
-                         alpha=params['alpha'],
                          )
 
     f_train = model.get_f_train()
@@ -94,10 +81,9 @@ def train(params):
     
         outs = []
         for batch in range(num_batches_train):
-            x0, x1, a0, a1, p0, p1, y = it_train.next()
-            x0, m0, a0, p0 = misc.prepare_snli([x0, a0, p0])
-            x1, m1, a1, p1 = misc.prepare_snli([x1, a1, p1])
-            out = f_train(x0, m0, a0, p0, x1, m1, a1, p1, y)
+            x, p, a = it_train.next()
+            x, m, p, a = misc.prepare_ptb([x, p, a])
+            out = f_train(x, m, p, a)
             outs.append(out)
             #print('\t[-] train: ' + str(out) + '\n')
             df.write('\t[-] train: ' + str(out) + '\n')

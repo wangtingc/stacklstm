@@ -18,7 +18,7 @@ project structure:
 
 
 ================
-Preprocess: PtLoader
+Preprocess: PtEncLoader & PtDecLoader
 
     @ func:
         - __init__          : init raw data path and data directory
@@ -48,7 +48,7 @@ Preprocess: SnilLoader
 
 
 ===============
-HelperLayers: StackLSTM
+HelperLayers: StackLSTMEncoder
 
     @ member:
         - W_[l|r|e]_to_[l|r|e|o|c]_s
@@ -60,3 +60,14 @@ HelperLayers: StackLSTM
         - composite         : composite function for stack lstm, need l, r and e
         - step              : one step for stack lstm
         - get_output_for    : interface for stack lstm
+
+
+===============
+HelperLayers: StackLSTMDecoder
+
+    @ member:
+        - W_[i|h|a]_to_[i|f|g|o|c]
+        - b_[i|h|a]
+    @ func:
+        - _step             : one step for track lstm decoder, same as LSTM
+        - get_output_for    : interface for stack lstm decoder
