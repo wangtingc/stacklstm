@@ -4,7 +4,7 @@ sys.path.append('../')
 import theano
 import theano.tensor as T
 from helper_layers.stack_lstm_decoder import StackLSTMDecoder
-from helper_layers.linear_layer import LinearLayer,
+from helper_layers.linear_layer import LinearLayer
 from lasagne.layers import InputLayer, EmbeddingLayer, DenseLayer, get_output, DropoutLayer, get_all_params
 from lasagne.regularization import l2
 from lasagne import init, nonlinearities, updates
@@ -39,7 +39,7 @@ class StackLSTMLM(object):
         self.l_a = InputLayer((None, None)) # idx for ancestor in stack
         self.l_emb = EmbeddingLayer(self.l_x, dict_size, dim_emb, W=w_emb)
         self.l_emb = DropoutLayer(self.l_emb, emb_dropout)
-        self.l_dec = StackLSTMDecoder([self.l_x, self.l_m, self.l_p, self.l_a,],
+        self.l_dec = StackLSTMDecoder([self.l_emb, self.l_m, self.l_p, self.l_a,],
                                        num_units = self.num_units,
                                        only_return_final=False,
                                        )

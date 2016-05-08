@@ -34,7 +34,7 @@ def init_params():
 
 
 def train(params):
-    data_loader = pt_dec_loader.PtLoader(params['data_path'])
+    data_loader = pt_dec_loader.PtDecLoader(params['data_path'])
 
     params['num_samples_train'] = len(data_loader.train_data[0])
     params['num_samples_valid'] = len(data_loader.valid_data[0])

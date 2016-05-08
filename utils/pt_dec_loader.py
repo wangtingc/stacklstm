@@ -3,9 +3,10 @@ import copy
 
 from nltk.parse import stanford
 from nltk.tree import Tree
-from misc import *
 from data_loader import *
 from collections import Counter
+import misc
+
 
 # this class is used for constructing the dataset for stacklstm,
 # in other words, the data will be parsed into binary constituent 
@@ -20,14 +21,23 @@ from collections import Counter
 #       binary unlabeled parse tree
 
 class PtDecLoader(DataLoader):
-    def __init__(self, data_path, parser_path, models_path, model_path):
+    def __init__(self, data_path, 
+                 count_threshold=0,
+                 wvec_path=None,
+                 filter_by_wvec=False,
+                 parser_path='/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/stanford-parser.jar',
+                 models_path='/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/stanford-parser-3.5.2-models.jar',
+                 model_path='/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/englishPCFG.ser.gz',
+                 ):
         # init the data path
-        super(PtLoader, self).__init__(data_path)
+        super(PtDecLoader, self).__init__(data_path)
         self.parser = self._init_parser(parser_path, models_path, model_path)
-        self.load_data()
+        self.count_threshold = count_threshold
+        self.filter_by_wvec = filter_by_wvec
+        self.load_data(wvec_path)
        
 
-    def load_data(self):
+    def load_data(self, wvec_path):
         train_data_path = self.data_path + 'train.data.pkl'
         valid_data_path = self.data_path + 'valid.data.pkl'
         test_data_path = self.data_path + 'test.data.pkl'
@@ -35,6 +45,8 @@ class PtDecLoader(DataLoader):
         if os.path.exists(train_data_path):
             self._load(self.vocab_path, train_data_path, \
                        valid_data_path, test_data_path, False)
+            self.w_emb = load_pkl(self.data_path + 'emb.pkl')
+            self.dict_size, self.dim_emb = self.w_emb.shape
         else:
             self._load_btrees()
             self.train_data = self._proc(self.train_btrees)
@@ -58,8 +70,10 @@ class PtDecLoader(DataLoader):
             self.test_btrees = load_pkl(test_btree_path)
             self.vocab = load_pkl(self.vocab_path)
         else:
-            self._load_tree()
+            self._load_trees()
             self._build_vocab(self.train_trees, self.vocab_path)
+            wvec = misc.load_glove(wvec_path)
+            self._build_wemb(wvec, self.filter_by_wvec)
             self.train_btrees = self._tree_to_btree(self.train_trees, self.vocab)
             self.valid_btrees = self._tree_to_btree(self.valid_trees, self.vocab)
             self.test_btrees = self._tree_to_btree(self.test_trees, self.vocab)
@@ -68,10 +82,11 @@ class PtDecLoader(DataLoader):
             save_pkl(valid_btree_path, self.valid_btrees)
             save_pkl(test_btree_path, self.test_btrees)
             save_pkl(self.vocab_path, self.vocab)
+            save_pkl(self.data_path + 'emb.pkl', self.w_emb)
 
     
     # if no btree, load tree
-    def _load_tree(self):
+    def _load_trees(self):
         train_tree_path = self.data_path + 'train.tree.pkl'
         valid_tree_path = self.data_path + 'valid.tree.pkl'
         test_tree_path = self.data_path + 'test.tree.pkl'
@@ -117,7 +132,7 @@ class PtDecLoader(DataLoader):
         for tree in trees:
             words += [w.lower() for w in tree.leaves()]
 
-        super(PtLoader, self)._build_vocab(words, vocab_path)
+        super(PtDecLoader, self)._build_vocab(words, vocab_path)
 
 
     # reconstruct a tree with word index
@@ -210,11 +225,17 @@ class PtDecLoader(DataLoader):
 
        
 if __name__ == '__main__':
-    data_path = '../data/ptb/'
+    data_path = '../data/ptb_dec/'
     parser_path = '/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/stanford-parser.jar'
     models_path = '/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/stanford-parser-3.5.2-models.jar'
     model_path = '/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/englishPCFG.ser.gz'
-    loader = PtLoader(data_path, parser_path, models_path, model_path)
+    loader = PtDecLoader(data_path,
+                        count_threshold=3,
+                        wvec_path = '../data/glove/glove.840B.300d.txt.gz',
+                        filter_by_wvec=False,
+                        parser_path=parser_path,
+                        models_path=models_path, 
+                        model_path=model_path)
 
     s = 'this is my house \n I can\'t believe how bad he is'
     data = loader._parse(s)
