@@ -42,6 +42,7 @@ def prepare_data(s):
     return x, m
 
 def prepare_snli(_data):
+    # x, action, pop()
     x, a, p = _data
     max_len = 0
     for i in x:
@@ -60,6 +61,28 @@ def prepare_snli(_data):
         pr[i, :len(x[i])] = p[i]
 
     return xr, mr, ar, pr
+
+
+def prepare_ptb(_data):
+    # x, predict, ancestor
+    x, p, a = _data
+    max_len = 0
+    for i in x:
+        max_len = max(max_len, len(i))
+
+    batch_size = len(x)
+    xr = np.zeros([batch_size], dtype='int64')
+    mr = np.zeros([batch_size], dtype=theano.config.floatX)
+    pr = np.zeros([batch_size], dtype='int64')
+    ar = np.zeros([batch_size], dtype='int64')
+
+    for i in range(batch_size):
+        xr[i, :len(x[i])] = x[i]
+        mr[i, :len(x[i])] = 1
+        pr[i, :len(x[i])] = p[i]
+        ar[i, :len(x[i])] = a[i]
+
+    return xr, mr, pr, ar
 
 
 def concat_sentence(s):

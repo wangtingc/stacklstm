@@ -7,14 +7,17 @@ from lasagne import init, nonlinearities
 # TODO:
 #   1. add h_init
 #   2. generate, predict if predict at next step
+#   3. loss for prediction
+#   4. if not binarized tree, explicitly memory attention loss?
 
 class StackLSTMDecoder(MergeLayer):
     def __init__(self, incomings, 
                  num_units,
                  ig=Gate(),
                  fg=Gate(),
-                 c=Gate(nonlinearity=nonlinearities.tanh),
-                 og=StackGate(),
+                 ag=Gate(),
+                 og=Gate(),
+                 c=Gate(W_cell=None, nonlinearity=nonlinearities.tanh),
                  nonlin=nonlinearities.tanh,
                  # common setting
                  grad_clipping=0,
@@ -27,8 +30,8 @@ class StackLSTMDecoder(MergeLayer):
             ig: inputgate
             fg: forgetgate
             ag: fathergate
-            c: cellgate
             og: outputgate
+            c: cellgate
         """
 
 
@@ -111,7 +114,7 @@ class StackLSTMDecoder(MergeLayer):
         c_stack_init = T.zeros([stack_len, batch_size, self.num_units])
         h_stack_init = T.zeros([stack_len, batch_size, self.num_units])
 
-        h, s = theano.scan(
+        c, h, c_stack, h_stack = theano.scan(
             fn = self._step,
             sequences=seqs,
             outputs_info=[c_init, h_init, c_stack_init, h_stack_init],

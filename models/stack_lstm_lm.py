@@ -10,6 +10,9 @@ from lasagne.regularization import l2
 from lasagne import init, nonlinearities, updates
 from lasagne.objectives import categorical_crossentropy
 
+# TODO:
+#   test function
+#   l2 for w_emb?
 
 class StackLSTMLM(object):
     def __init__(self, num_units, 
@@ -17,7 +20,6 @@ class StackLSTMLM(object):
                  dim_emb,
                  w_emb,
                  emb_dropout,
-                 clf_dropout,
                  lr = 1e-3,
                  ):
         """

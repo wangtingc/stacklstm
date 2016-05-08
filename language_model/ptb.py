@@ -21,6 +21,7 @@ def init_params():
     params['valid_period'] = 1
     params['test_period'] = 1
     params['exp_time'] = str(datetime.now().strftime('%Y%m%d-%H%M'))
+    params['emb_dropout'] = 0.2
     params['lr'] = 2e-3
     
     # paths
@@ -52,6 +53,7 @@ def train(params):
                          dict_size=data_loader.dict_size,
                          dim_emb=data_loader.dim_emb,
                          w_emb=data_loader.w_emb,
+                         emb_dropout=params['emb_dropout'],
                          lr=params['lr'],
                          )
 
