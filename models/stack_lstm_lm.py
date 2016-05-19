@@ -5,10 +5,10 @@ import theano
 import theano.tensor as T
 from helper_layers.stack_lstm_decoder import StackLSTMDecoder
 from helper_layers.linear_layer import LinearLayer
-from lasagne.layers import InputLayer, EmbeddingLayer, DenseLayer, get_output, DropoutLayer, get_all_params
+from lasagne.layers import InputLayer, EmbeddingLayer, DenseLayer, get_output, DropoutLayer, get_all_params, ReshapeLayer
 from lasagne.regularization import l2
-from lasagne import init, nonlinearities, updates
-from lasagne.objectives import categorical_crossentropy
+from lasagne import init, nonlinearities, updates, objectives
+#from lasagne.objectives import categorical_crossentropy
 
 # TODO:
 #   test function
@@ -43,11 +43,14 @@ class StackLSTMLM(object):
                                        num_units = self.num_units,
                                        only_return_final=False,
                                        )
+        self.l_prd = ReshapeLayer(self.l_dec, [-1, num_units])
+        self.l_prd = DenseLayer(self.l_prd, dict_size, 
+                                nonlinearity=nonlinearities.softmax)
 
 
     def _forward(self, inputs):
         x, m, p, a = inputs
-        h = get_output(self.l_dec, {self.l_x: x,
+        h = get_output(self.l_prd, {self.l_x: x,
                                     self.l_m: m,
                                     self.l_p: p,
                                     self.l_a: a,})
@@ -63,10 +66,11 @@ class StackLSTMLM(object):
         pred = self._forward(inputs)
         batch_size, seq_len = x.shape
         
-        pred = pred.reshape([-1, self.dict_size])
         l = objectives.categorical_crossentropy(pred, x.flatten())
         l = l.reshape([batch_size, seq_len])
         l = (l * p).sum(axis=1)
+        ppl = T.exp(T.sum(l) / T.sum(p))
+        l = l.mean()
 
         params = self.get_params()
         grads = theano.grad(l, params)
@@ -74,9 +78,28 @@ class StackLSTMLM(object):
         grads = updates.total_norm_constraint(grads, max_norm=20)
         update = updates.adam(grads, params, self.lr)
         
-        f_train = theano.function(inputs, l, updates=update)
+        f_train = theano.function(inputs, [l, ppl], updates=update)
         return f_train
         
+    def get_f_test(self,):
+        x = T.lmatrix()
+        m = T.matrix()
+        p = T.lmatrix()
+        a = T.lmatrix()
+        
+        inputs = [x, m, p, a]
+        pred = self._forward(inputs)
+        batch_size, seq_len = x.shape
+        
+        l = objectives.categorical_crossentropy(pred, x.flatten())
+        l = l.reshape([batch_size, seq_len])
+        l = (l * p).sum(axis=1)
+        ppl = T.exp(T.sum(l) / T.sum(p))
+        l = l.mean()
+        
+        f_test = theano.function(inputs, [l,ppl])
+        return f_test
+       
     
     def _l2_regularization(self,):
         params = self.get_params()

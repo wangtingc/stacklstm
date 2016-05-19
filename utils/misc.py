@@ -71,10 +71,10 @@ def prepare_ptb(_data):
         max_len = max(max_len, len(i))
 
     batch_size = len(x)
-    xr = np.zeros([batch_size], dtype='int64')
-    mr = np.zeros([batch_size], dtype=theano.config.floatX)
-    pr = np.zeros([batch_size], dtype='int64')
-    ar = np.zeros([batch_size], dtype='int64')
+    xr = np.zeros([batch_size, max_len], dtype='int64')
+    mr = np.zeros([batch_size, max_len], dtype=theano.config.floatX)
+    pr = np.zeros([batch_size, max_len], dtype='int64')
+    ar = np.zeros([batch_size, max_len], dtype='int64')
 
     for i in range(batch_size):
         xr[i, :len(x[i])] = x[i]

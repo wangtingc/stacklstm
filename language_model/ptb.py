@@ -21,7 +21,7 @@ def init_params():
     params['valid_period'] = 1
     params['test_period'] = 1
     params['exp_time'] = str(datetime.now().strftime('%Y%m%d-%H%M'))
-    params['emb_dropout'] = 0.2
+    params['emb_dropout'] = 0.0
     params['lr'] = 2e-3
     
     # paths
@@ -58,8 +58,7 @@ def train(params):
                          )
 
     f_train = model.get_f_train()
-    # debug
-    f_test = f_train
+    f_test = model.get_f_test()
 
     if not os.path.exists(params['save_dir']):
         os.mkdir(params['save_dir'])
@@ -74,7 +73,8 @@ def train(params):
     num_batches_train = params['num_samples_train'] / params['batch_size']
     num_batches_valid = params['num_samples_valid'] / params['batch_size']
     num_batches_test = params['num_samples_test'] / params['batch_size']
-
+    
+    cur = time.time()
     for epoch in range(params['num_epochs']):
         epoch_info = ' [*] epoch %d \n' % epoch
         lf.write(epoch_info)
@@ -88,11 +88,36 @@ def train(params):
             out = f_train(x, m, p, a)
             outs.append(out)
             #print('\t[-] train: ' + str(out) + '\n')
-            df.write('\t[-] train: ' + str(out) + '\n')
-        lf.write('\t[-] train: ' + str(np.mean(outs, axis=0)) + '\n')
-        print('\t[-] train: ' + str(np.mean(outs, axis=0)) + '\n')
+            df.write('\t[-] train: ' + str(out) + '')
+        lf.write('\t[-] train: ' + str(np.mean(outs, axis=0)) + '')
+        print('\t[-] train: ' + str(np.mean(outs, axis=0)) + '')
+        print('\t[-] time:' + str(time.time() - cur) + '\n')
         
-        model.save_weights(params['save_weights_path'])
+        outs = []
+        for batch in range(num_batches_valid):
+            x, p, a = it_valid.next()
+            x, m, p, a = misc.prepare_ptb([x, p, a])
+            out = f_test(x, m, p, a)
+            outs.append(out)
+            #print('\t[-] valid: ' + str(out) + '\n')
+            df.write('\t[-] valid: ' + str(out) + '')
+        lf.write('\t[-] valid: ' + str(np.mean(outs, axis=0)) + '')
+        print('\t[-] valid: ' + str(np.mean(outs, axis=0)) + '\n')
+        print('\t[-] time:' + str(time.time() - cur) + '\n')
+        
+        outs = []
+        for batch in range(num_batches_test):
+            x, p, a = it_test.next()
+            x, m, p, a = misc.prepare_ptb([x, p, a])
+            out = f_test(x, m, p, a)
+            outs.append(out)
+            #print('\t[-] test: ' + str(out) + '\n')
+            df.write('\t[-] test: ' + str(out) + '')
+        lf.write('\t[-] test: ' + str(np.mean(outs, axis=0)) + '')
+        print('\t[-] test: ' + str(np.mean(outs, axis=0)) + '\n')
+        print('\t[-] time:' + str(time.time() - cur) + '\n')
+       
+        #model.save_weights(params['save_weights_path'])
 
 
 if __name__ == '__main__':

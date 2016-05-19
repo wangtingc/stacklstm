@@ -36,7 +36,7 @@ class StackLSTMDecoder(MergeLayer):
                  nonlin=nonlinearities.tanh,
                  # common setting
                  grad_clipping=0,
-                 only_return_final=True,
+                 only_return_final=False,
                  **kwargs): 
 
         """
@@ -77,7 +77,7 @@ class StackLSTMDecoder(MergeLayer):
         (self.W_i_to_fg, self.W_h_to_fg, self.W_a_to_fg, self.b_fg, self.nonlin_fg) = add_gate_params(fg, 'fg')
         (self.W_i_to_ag, self.W_h_to_ag, self.W_a_to_ag, self.b_ag, self.nonlin_ag) = add_gate_params(ag, 'ag')
         (self.W_i_to_og, self.W_h_to_og, self.W_a_to_og, self.b_og, self.nonlin_og) = add_gate_params(og, 'og')
-        (self.W_i_to_c, self.W_h_to_c, self.W_a_to_c, self.b_c, self.nonlin_c) = add_gate_params(c, 'c')
+        (self.W_i_to_c , self.W_h_to_c , self.W_a_to_c , self.b_c , self.nonlin_c ) = add_gate_params(c , 'c' )
 
 
     def get_output_shape_for(self, input_shapes):
@@ -118,13 +118,13 @@ class StackLSTMDecoder(MergeLayer):
              self.b_og, self.b_c], axis=0)
         
         t = T.arange(seq_len)
-        seqs = [t, x, m, p, a]
+        seqs = [t, x, m[:, :, None], p[:, :, None], a]
         non_seqs = [W_i, W_h, W_a, b, p]
         
         # The first element is the initial state for 2 reasons:
         # 1. if the first mask is 0, there should be a previous state.
         # 2. it can be used for empty element in tracking lstm
-        stack_len = seq_len/2 + 1
+        stack_len = seq_len // 2 + 1
         c_init = T.zeros([batch_size, self.num_units])
         h_init = T.zeros([batch_size, self.num_units])
         c_stack_init = T.zeros([stack_len, batch_size, self.num_units])
@@ -148,6 +148,7 @@ class StackLSTMDecoder(MergeLayer):
     def _step(self, t_n, x_n, m_n, p_n, a_n, 
               prev_c, prev_h, prev_c_stack, prev_h_stack,
               W_i, W_h, W_a, b, p,):
+
         
         # [ct, ht] = f(ht-1, ft, xn)
         
@@ -155,10 +156,13 @@ class StackLSTMDecoder(MergeLayer):
         ac_n = prev_c_stack[a_n, T.arange(batch_size)]
         ah_n = prev_h_stack[a_n, T.arange(batch_size)]
 
+
         def slice_w(x, n):
             return x[:, n*self.num_units:(n+1)*self.num_units]
+
         
         gates = T.dot(x_n, W_i) + T.dot(prev_h, W_h) + T.dot(ah_n, W_a) + b
+
 
         if self.grad_clipping:
             gates = theano.gradient.grad_clip(
@@ -177,18 +181,20 @@ class StackLSTMDecoder(MergeLayer):
         c_input = self.nonlin(c_input)
 
         c = ig*c_input + fg*prev_c + ag*ac_n
-        h = og_t * self.nonlin(c)
+        h = og * self.nonlin(c)
+
+        #save the state to stack if pred is False and mask if true
+        bs_idx = T.eq(m_n*(1-p_n), 1).nonzero()[0] 
+        sq_idx = (1-p)[:t_n].sum(axis=0)[bs_idx]
+        c_stack = T.set_subtensor(prev_c_stack[sq_idx, bs_idx], c[bs_idx])
+        h_stack = T.set_subtensor(prev_h_stack[sq_idx, bs_idx], h[bs_idx])
+    
         
-        #save the state to stack if pred is False
-        bs_idx = T.eq(p_n, 0).nonzero()[0]
-        sq_idx = p[:t_n].sum(axis=1)[bs_idx]
-        c_stack = T.set_subtensor(prev_c_stack[sq_idx, bs_idx], c[np_idx])
-        h_stack = T.set_subtensor(prev_h_stack[sq_idx, bs_idx], h[np_idx])
+        # if pred is True, generate new state, int64 * float32 = float64
+        h = T.cast(prev_h * (1 - p_n) + h * p_n, theano.config.floatX)
+        c = T.cast(prev_c * (1 - p_n) + c * p_n, theano.config.floatX)
         
-        # if pred is True, generate new state
-        h = prev_h * (1 - p_n) + h * p_n
-        c = prev_c * (1 - p_n) + c * p_n
-        
+
         # if not masked, pass the step
         h = prev_h * (1 - m_n) + h * m_n
         c = prev_c * (1 - m_n) + c * m_n

@@ -201,7 +201,11 @@ class PtDecLoader(DataLoader):
         """
         x, p, f, s, q = [], [], [], [], [-1]
         self._traversal(tree, x, p, f, s, q)
-        return x[1:], p[1:], f[1:]
+
+        if isinstance(tree, Tree):
+            return x[1:], p[1:], f[1:]
+        else:
+            return x, [1], [0]
 
 
     def _traversal(self, tree, x, p, f, s, q):
@@ -248,4 +252,6 @@ if __name__ == '__main__':
 
     ####
     t = [Tree('0', ['A', Tree('1', ['B', 'C'])])]
+    print loader._proc(t)
+    t = '0'
     print loader._proc(t)
