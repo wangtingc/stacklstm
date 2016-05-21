@@ -88,7 +88,7 @@ class StackLSTMDecoder(MergeLayer):
             return input_shape[0], input_shape[1], self.num_units
 
 
-    def get_output_for(self, inputs):
+    def get_output_for(self, inputs, **kwargs):
         x, m, p, a = inputs
         
         x = x.dimshuffle(1, 0, 2)   # seq_len, batch_size, num_units

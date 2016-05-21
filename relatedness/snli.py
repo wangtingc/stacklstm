@@ -69,18 +69,24 @@ def train(params):
                          )
 
     f_train = model.get_f_train()
-    # debug
-    f_test = f_train
+    f_test = model.get_f_test()
 
     if not os.path.exists(params['save_dir']):
         os.mkdir(params['save_dir'])
+
     config_info = misc.configuration2str(params)
+    weights_info = misc.weight_info2str(model.get_params())
 
     df = open(params['details_log_path'], 'w')
     lf = open(params['log_path'], 'w')
+
     df.write(config_info + '\n')
     lf.write(config_info + '\n')
     print(config_info)
+
+    df.write(weights_info + '\n')
+    lf.write(config_info + '\n')
+    print(weights_info)
     
     num_batches_train = params['num_samples_train'] / params['batch_size']
     num_batches_valid = params['num_samples_valid'] / params['batch_size']
@@ -88,22 +94,36 @@ def train(params):
 
     for epoch in range(params['num_epochs']):
         epoch_info = ' [*] epoch %d \n' % epoch
-        lf.write(epoch_info)
-        df.write(epoch_info)
+        lf.write(epoch_info + '\n')
+        df.write(epoch_info + '\n')
         print(epoch_info)
     
-        outs = []
+        out_all = []
         for batch in range(num_batches_train):
             x0, x1, a0, a1, p0, p1, y = it_train.next()
             x0, m0, a0, p0 = misc.prepare_snli([x0, a0, p0])
             x1, m1, a1, p1 = misc.prepare_snli([x1, a1, p1])
             out = f_train(x0, m0, a0, p0, x1, m1, a1, p1, y)
-            outs.append(out)
+            out_all.append(out)
             #print('\t[-] train: ' + str(out) + '\n')
             df.write('\t[-] train: ' + str(out) + '\n')
-        lf.write('\t[-] train: ' + str(np.mean(outs, axis=0)) + '\n')
-        print('\t[-] train: ' + str(np.mean(outs, axis=0)) + '\n')
-        
+        train_info = '\t[-] train: ' + str(np.mean(out_all, axis=0))
+        lf.write(train_info + '\n')
+        print(train_info)
+     
+        out_all = []
+        for batch in range(num_batches_valid):
+            x0, x1, a0, a1, p0, p1, y = it_test.next()
+            x0, m0, a0, p0 = misc.prepare_snli([x0, a0, p0])
+            x1, m1, a1, p1 = misc.prepare_snli([x1, a1, p1])
+            out = f_test(x0, m0, a0, p0, x1, m1, a1, p1, y)
+            out_all.append(out)
+            #print('\t[-] train: ' + str(out) + '\n')
+            df.write('\t[-] train: ' + str(out) + '\n')
+        train_info = '\t[-] train: ' + str(np.mean(out_all, axis=0))
+        lf.write(train_info + '\n')
+        print(train_info)    
+
         model.save_weights(params['save_weights_path'])
 
 

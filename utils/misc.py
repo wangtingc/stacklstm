@@ -102,11 +102,20 @@ def filt_words(s, dict_size):
     return x
 
 def configuration2str(params):
-    s = '[*] printing experiment configuration' + '\n'
+    s = ' [*] printing experiment configuration' + '\n'
     for k in params:
         s += '\t[-] ' + k + ': ' + str(params[k]) + '\n'
     s += '\n'
     return s
+
+def weightsinfo2str(params):
+    s = ' [*] all parameters:' + '\n'
+    for p in params:
+        s += '\t[-] ' + p.name + ': ' 
+        s += str(p.get_value().shape) + '\n'
+    s + '\n'
+    return s
+    
 
 def load_glove(filename):
     glove = {}

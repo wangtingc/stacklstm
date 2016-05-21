@@ -22,7 +22,7 @@ def init_params():
     params['test_period'] = 1
     params['exp_time'] = str(datetime.now().strftime('%Y%m%d-%H%M'))
     params['emb_dropout'] = 0.0
-    params['lr'] = 2e-3
+    params['lr'] = 2e-4
     
     # paths
     params['save_dir'] = '../results/' + params['exp_time'] + '/'
@@ -56,19 +56,26 @@ def train(params):
                          emb_dropout=params['emb_dropout'],
                          lr=params['lr'],
                          )
+    
 
     f_train = model.get_f_train()
     f_test = model.get_f_test()
 
     if not os.path.exists(params['save_dir']):
         os.mkdir(params['save_dir'])
+
     config_info = misc.configuration2str(params)
+    weights_info = misc.weightsinfo2str(model.get_params())
 
     df = open(params['details_log_path'], 'w')
     lf = open(params['log_path'], 'w')
+
     df.write(config_info + '\n')
     lf.write(config_info + '\n')
     print(config_info)
+    df.write(weights_info)
+    lf.write(weights_info)
+    print(weights_info)
     
     num_batches_train = params['num_samples_train'] / params['batch_size']
     num_batches_valid = params['num_samples_valid'] / params['batch_size']
@@ -76,48 +83,61 @@ def train(params):
     
     cur = time.time()
     for epoch in range(params['num_epochs']):
-        epoch_info = ' [*] epoch %d \n' % epoch
-        lf.write(epoch_info)
-        df.write(epoch_info)
+        epoch_info = ' [*] epoch %d ' % epoch
+        lf.write(epoch_info + '\n')
+        df.write(epoch_info + '\n')
         print(epoch_info)
     
-        outs = []
+        out_all, llh_all, nw_all = [], [], []
         for batch in range(num_batches_train):
             x, p, a = it_train.next()
             x, m, p, a = misc.prepare_ptb([x, p, a])
             out = f_train(x, m, p, a)
-            outs.append(out)
-            #print('\t[-] train: ' + str(out) + '\n')
+            out_all.append(out)
+            llh_all.append(out[0] * params['batch_size'])
+            nw_all.append(np.sum(p))
             df.write('\t[-] train: ' + str(out) + '')
-        lf.write('\t[-] train: ' + str(np.mean(outs, axis=0)) + '')
-        print('\t[-] train: ' + str(np.mean(outs, axis=0)) + '')
-        print('\t[-] time:' + str(time.time() - cur) + '\n')
-        
-        outs = []
+        ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
+        train_info = '\t[-] train: ' + str(np.mean(out_all, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
+        print('\t[-] time:' + str(time.time() - cur))
+        df.write(train_info + '\n')
+        lf.write(train_info + '\n')
+        print(train_info)
+     
+        out_all, llh_all, nw_all = [], [], []
         for batch in range(num_batches_valid):
             x, p, a = it_valid.next()
             x, m, p, a = misc.prepare_ptb([x, p, a])
             out = f_test(x, m, p, a)
-            outs.append(out)
-            #print('\t[-] valid: ' + str(out) + '\n')
+            out_all.append(out)
+            llh_all.append(out[0] * params['batch_size'])
+            nw_all.append(np.sum(p))
             df.write('\t[-] valid: ' + str(out) + '')
-        lf.write('\t[-] valid: ' + str(np.mean(outs, axis=0)) + '')
-        print('\t[-] valid: ' + str(np.mean(outs, axis=0)) + '\n')
-        print('\t[-] time:' + str(time.time() - cur) + '\n')
-        
-        outs = []
+        ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
+        valid_info = '\t[-] valid: ' + str(np.mean(out_all, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
+        print('\t[-] time:' + str(time.time() - cur))
+        df.write(valid_info)
+        lf.write(valid_info)
+        print(valid_info)
+
+        out_all, llh_all, nw_all = [], [], []
         for batch in range(num_batches_test):
             x, p, a = it_test.next()
             x, m, p, a = misc.prepare_ptb([x, p, a])
             out = f_test(x, m, p, a)
-            outs.append(out)
-            #print('\t[-] test: ' + str(out) + '\n')
+            out_all.append(out)
+            llh_all.append(out[0] * params['batch_size'])
+            nw_all.append(np.sum(p))
             df.write('\t[-] test: ' + str(out) + '')
-        lf.write('\t[-] test: ' + str(np.mean(outs, axis=0)) + '')
-        print('\t[-] test: ' + str(np.mean(outs, axis=0)) + '\n')
-        print('\t[-] time:' + str(time.time() - cur) + '\n')
-       
-        #model.save_weights(params['save_weights_path'])
+        ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
+        test_info = '\t[-] test: ' + str(np.mean(outs, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
+        print('\t[-] time:' + str(time.time() - cur))
+        df.write(test_info)
+        lf.write(test_info)
+        print(test_info)
+        
+        # todo
+        # model.save_weights(params['save_weights_path'])
 
 
 if __name__ == '__main__':

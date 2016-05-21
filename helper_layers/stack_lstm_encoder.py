@@ -142,7 +142,7 @@ class StackLSTMEncoder(MergeLayer):
             return input_shape[0], input_shape[1], self.num_units_stack
 
 
-    def get_output_for(self, inputs):
+    def get_output_for(self, inputs, **kwargs):
         xc, xh, m, a, p = inputs
         
         xc = xc.dimshuffle(1, 0, 2) # seq_len, batch_size, num_units_stack
