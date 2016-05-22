@@ -1,26 +1,44 @@
 ================
-project structure:
+
+# Project Structure:
 
     * data:
-        - ptb // for ppl 
-        - stb // for clf
-    * models:
-        - stackLSTM
+        - ptb_dec	  : for ppl 
+		- ptb_enc	  : for something..
+        - stb		  : for sentiment classification
+		- snli		  : for paraphrase entailment
+
+    * helper_layers:
+		- linear_layer	   : transformation layer for [h, c] of each words in spinn paper
+        - stackLSTMEncoder : encoder the sentence based on syntax
+		- stackLSTMDecoder : generate the sentence based on syntax
+
     * utils:
-        - batch_iterator
-        - data_loader
-        - ptb_loader
-        - snli_loader
-        - misc
-    * examples:
-        - ptb
-        - stb
+        - batch_iterator   : batch_iterator
+        - data_loader	   : basic function for data_loader
+        - ptb_enc_loader   : the class to load the data for StackLSTMEncoder
+        - snli_loader	   : the class to load the data for StackLSTMEncoder
+		- ptb_dec_loader   : the class to load the data for StackLSTMDecoder
+        - misc			   : other useful functions
+
+    * models:
+        - stack_lstm_lm	   : model for testing language modeling ability for decoder
+        - stack_lstm_sim   : model for testing paraphrase entailment performance
+	
+	* relateness:
+		- snli			   : example for parapharase entailment with snli dataset
+	
+	* language_model	   
+		- ptb			   : example for language modeling with ptb dataset
 
 
 ================
+
+# Class Details:
+
 Preprocess: PtEncLoader & PtDecLoader
 
-    @ func:
+    - @ func:
         - __init__          : init raw data path and data directory
         - load_data         : load the entire data
         - _load_btrees      : if no exisiting data, load binarized trees
@@ -36,9 +54,10 @@ Preprocess: PtEncLoader & PtDecLoader
 
 
 ===============
+
 Preprocess: SnilLoader
 
-    @ func:
+    - @ func:
         - __init__          : init raw data path and data direcotry
         - load_data         : load the entire data
         - _read_json_data   : read raw data (json format)
@@ -48,9 +67,10 @@ Preprocess: SnilLoader
 
 
 ===============
+
 HelperLayers: StackLSTMEncoder
 
-    @ member:
+    - @ member:
         - W_[l|r|e]_to_[l|r|e|o|c]_s
         - b_[l|r|e|c|o]_s
         - W_[i|h]_to_[i|f|o|c]_t
@@ -65,9 +85,9 @@ HelperLayers: StackLSTMEncoder
 ===============
 HelperLayers: StackLSTMDecoder
 
-    @ member:
+    - @ member:
         - W_[i|h|a]_to_[i|f|g|o|c]
         - b_[i|h|a]
-    @ func:
+	- @ func:
         - _step             : one step for track lstm decoder, same as LSTM
         - get_output_for    : interface for stack lstm decoder

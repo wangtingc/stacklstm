@@ -116,8 +116,8 @@ def train(params):
         ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
         valid_info = '\t[-] valid: ' + str(np.mean(out_all, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
         print('\t[-] time:' + str(time.time() - cur))
-        df.write(valid_info)
-        lf.write(valid_info)
+        df.write(valid_info + '\n')
+        lf.write(valid_info + '\n')
         print(valid_info)
 
         out_all, llh_all, nw_all = [], [], []
@@ -130,10 +130,10 @@ def train(params):
             nw_all.append(np.sum(p))
             df.write('\t[-] test: ' + str(out) + '')
         ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
-        test_info = '\t[-] test: ' + str(np.mean(outs, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
+        test_info = '\t[-] test: ' + str(np.mean(out_all, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
         print('\t[-] time:' + str(time.time() - cur))
-        df.write(test_info)
-        lf.write(test_info)
+        df.write(test_info + '\n')
+        lf.write(test_info + '\n')
         print(test_info)
         
         # todo
