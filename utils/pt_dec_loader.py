@@ -48,7 +48,7 @@ class PtDecLoader(DataLoader):
             self.w_emb = load_pkl(self.data_path + 'emb.pkl')
             self.dict_size, self.dim_emb = self.w_emb.shape
         else:
-            self._load_btrees()
+            self._load_btrees(wvec_path)
             self.train_data = self._proc(self.train_btrees)
             self.valid_data = self._proc(self.valid_btrees)
             self.test_data = self._proc(self.test_btrees)
@@ -58,7 +58,7 @@ class PtDecLoader(DataLoader):
 
     
     # if no data, load binarized trees
-    def _load_btrees(self):
+    def _load_btrees(self, wvec_path):
         train_btree_path = self.data_path + 'train.btree.pkl'
         valid_btree_path = self.data_path + 'valid.btree.pkl'
         test_btree_path = self.data_path + 'test.btree.pkl'
