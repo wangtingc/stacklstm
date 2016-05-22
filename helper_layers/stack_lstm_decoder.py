@@ -49,10 +49,9 @@ class StackLSTMDecoder(MergeLayer):
             c: cellgate
         """
 
-
-        # This layer inherits from a MergerLayer, because it has [x, m, p, f]
-        # five inputs. 
-        [l_x, l_m, l_p , l_f] = incomings
+        # This layer inherits from a MergerLayer, because it has [x, m, p, a]
+        # four inputs. 
+        [l_x, l_m, l_p , l_a] = incomings
         super(StackLSTMDecoder, self).__init__(incomings, **kwargs)
 
         self.nonlin = nonlin
@@ -97,17 +96,17 @@ class StackLSTMDecoder(MergeLayer):
         a = a.dimshuffle(1, 0)      # seq_len, batch_size, 2
         seq_len, batch_size, _ = x.shape
         
-        # W_left_stacked for stack
+        # W_in_stacked for stack
         W_i = T.concatenate(
             [self.W_i_to_ig, self.W_i_to_fg, self.W_i_to_ag,
              self.W_i_to_og, self.W_i_to_c], axis=1)
         
-        # W_right_stacked for stack
+        # W_hid_stacked for stack
         W_h = T.concatenate(
             [self.W_h_to_ig, self.W_h_to_fg, self.W_h_to_ag,
              self.W_h_to_og, self.W_h_to_c], axis=1)
     
-        # W_right_stacked for stack
+        # W_anc_stacked for stack
         W_a = T.concatenate(
             [self.W_a_to_ig, self.W_a_to_fg, self.W_a_to_ag,
              self.W_a_to_og, self.W_a_to_c], axis=1)
@@ -117,13 +116,11 @@ class StackLSTMDecoder(MergeLayer):
             [self.b_ig, self.b_fg, self.b_ag,
              self.b_og, self.b_c], axis=0)
         
-        t = T.arange(seq_len)
-        seqs = [t, x, m[:, :, None], p[:, :, None], a]
+        seqs = [T.arange(seq_len), x, m[:, :, None], p[:, :, None], a]
         non_seqs = [W_i, W_h, W_a, b, p]
         
-        # The first element is the initial state for 2 reasons:
-        # 1. if the first mask is 0, there should be a previous state.
-        # 2. it can be used for empty element in tracking lstm
+        # The first element is the initial state for 1 reason:
+        #   1. for initial root node
         stack_len = seq_len // 2 + 1
         c_init = T.zeros([batch_size, self.num_units])
         h_init = T.zeros([batch_size, self.num_units])
@@ -148,7 +145,6 @@ class StackLSTMDecoder(MergeLayer):
     def _step(self, t_n, x_n, m_n, p_n, a_n, 
               prev_c, prev_h, prev_c_stack, prev_h_stack,
               W_i, W_h, W_a, b, p,):
-
         
         # [ct, ht] = f(ht-1, ft, xn)
         
@@ -156,13 +152,10 @@ class StackLSTMDecoder(MergeLayer):
         ac_n = prev_c_stack[a_n, T.arange(batch_size)]
         ah_n = prev_h_stack[a_n, T.arange(batch_size)]
 
-
         def slice_w(x, n):
             return x[:, n*self.num_units:(n+1)*self.num_units]
 
-        
         gates = T.dot(x_n, W_i) + T.dot(prev_h, W_h) + T.dot(ah_n, W_a) + b
-
 
         if self.grad_clipping:
             gates = theano.gradient.grad_clip(
@@ -189,12 +182,10 @@ class StackLSTMDecoder(MergeLayer):
         c_stack = T.set_subtensor(prev_c_stack[sq_idx, bs_idx], c[bs_idx])
         h_stack = T.set_subtensor(prev_h_stack[sq_idx, bs_idx], h[bs_idx])
     
-        
         # if pred is True, generate new state, int64 * float32 = float64
         h = T.cast(prev_h * (1 - p_n) + h * p_n, theano.config.floatX)
         c = T.cast(prev_c * (1 - p_n) + c * p_n, theano.config.floatX)
         
-
         # if not masked, pass the step
         h = prev_h * (1 - m_n) + h * m_n
         c = prev_c * (1 - m_n) + c * m_n

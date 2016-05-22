@@ -10,7 +10,6 @@ from lasagne.regularization import l2
 from lasagne import init, nonlinearities, updates
 from lasagne.objectives import categorical_crossentropy
 
-
 class StackLSTMSim(object):
     def __init__(self, num_units_stack, 
                  num_units_track, 
@@ -72,7 +71,6 @@ class StackLSTMSim(object):
                                   nonlinearity=nonlinearities.softmax,
                                   name='l_clf_t')
 
-
     def _forward(self, inputs, deterministic=False):
         x0, m0, a0, p0, x1, m1, a1, p1 = inputs
 
@@ -105,7 +103,6 @@ class StackLSTMSim(object):
         # return flattened pa0 and pa1
         return pa0, pa1, t
 
-    
     def get_f_train(self,):
         x0, x1 = T.lmatrix(), T.lmatrix()
         m0, m1 = T.matrix(), T.matrix()
@@ -165,7 +162,6 @@ class StackLSTMSim(object):
 
         return f_test
 
-    
     def _l2_regularization(self,):
         params = self.get_params()
         l_reg = 0
@@ -174,7 +170,6 @@ class StackLSTMSim(object):
                 l_reg += self.lena * l2(w).sum()
 
         return l_reg
-
 
     def get_params(self,):
         params = []

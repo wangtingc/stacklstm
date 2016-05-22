@@ -11,7 +11,6 @@ from lasagne import init, nonlinearities, updates, objectives
 #from lasagne.objectives import categorical_crossentropy
 
 # TODO:
-#   test function
 #   l2 for w_emb?
 
 class StackLSTMLM(object):
@@ -50,7 +49,6 @@ class StackLSTMLM(object):
         self.l_prd_p = DenseLayer(self.l_dec, 2, 
                                 nonlinearity=nonlinearities.softmax, name='l_prd_p')
 
-
     def _forward(self, inputs, deterministic=False):
         x, m, p, a = inputs
         e = get_output(self.l_emb, {self.l_x: x})
@@ -82,7 +80,7 @@ class StackLSTMLM(object):
         lx = lx.mean()
         
         # although it is wrong to cal ppl this way, it remains for batch testing.
-        ppl = T.exp(T.sum(lx) / T.sum(p))
+        ppl = T.exp(lx * batch_size / T.sum(p))
 
         lp = objectives.categorical_crossentropy(pp, p.flatten())
         lp = lp.reshape([batch_size, seq_len])
@@ -113,7 +111,7 @@ class StackLSTMLM(object):
         lx = (lx * p).sum(axis=1)
         lx = lx.mean()
 
-        ppl = T.exp(T.sum(lx) / T.sum(p))
+        ppl = T.exp(lx * batch_size / T.sum(p))
 
         lp = objectives.categorical_crossentropy(pp, p.flatten())
         lp = lp.reshape([batch_size, seq_len])
@@ -123,7 +121,6 @@ class StackLSTMLM(object):
         f_test = theano.function(inputs, [lx, lp ,ppl])
         return f_test
        
-    
     def _l2_regularization(self,):
         params = self.get_params()
         l_reg = 0
@@ -132,7 +129,6 @@ class StackLSTMLM(object):
                 l_reg += self.lena * l2(w).sum()
 
         return l_reg
-
 
     def get_params(self,):
         params = get_all_params([self.l_prd_x, self.l_prd_p])
