@@ -142,7 +142,6 @@ class PtDecLoader(DataLoader):
         else:
             return vocab.get(tree.lower(), 1)
 
-
     # reconstruct an binary constituency parse tree
     def _convert_to_binary_tree(self, tree):
         if not isinstance(tree, Tree):
@@ -159,7 +158,7 @@ class PtDecLoader(DataLoader):
             right = self._convert_to_binary_tree(tree[1])
             new_tree = Tree(tree.label(), [left, right])
             return new_tree
-        
+
         right = self._convert_to_binary_tree(tree[len(tree)-1])
         for idx in range(len(tree) - 1)[::-1]:
             left = self._convert_to_binary_tree(tree[idx])
@@ -178,13 +177,13 @@ class PtDecLoader(DataLoader):
 
 
     def _proc(self, trees):
-        x, a, p = [], [], []
+        x, p, a = [], [], []
         for tree in trees:
-            xi, ai, pi = self._proc_single(tree)
+            xi, pi, ai = self._proc_single(tree)
             x.append(xi)
-            a.append(ai)
             p.append(pi)
-        return x, a, p
+            a.append(ai)
+        return x, p, a
 
 
     def _proc_single(self, tree):
@@ -195,34 +194,34 @@ class PtDecLoader(DataLoader):
 
         x: output at each step, 0 for tree
         p: if prediction at this step
-        f: father of each step
+        a: father of each step
         s: stack, save all the internal state
-        q: queue for extract f
+        q: queue for extracting f
         """
-        x, p, f, s, q = [], [], [], [], [-1]
-        self._traversal(tree, x, p, f, s, q)
+        x, p, a, s, q = [], [], [], [], [-1]
+        self._traversal(tree, x, p, a, s, q)
 
         if isinstance(tree, Tree):
-            return x[1:], p[1:], f[1:]
+            return x[1:], p[1:], a[1:]
         else:
             return x, [1], [0]
 
 
-    def _traversal(self, tree, x, p, f, s, q):
+    def _traversal(self, tree, x, p, a, s, q):
         if not isinstance(tree, Tree):
             x.append(tree)
             p.append(1)
-            f.append(q[-1])
+            a.append(q[-1])
             return
         
         x.append(0)
         p.append(0)
-        f.append(q[-1])
+        a.append(q[-1])
         s.append(tree)
         q.append(len(s)-1)
 
         for i in tree:
-            self._traversal(i, x, p, f, s, q)
+            self._traversal(i, x, p, a, s, q)
 
         q.pop()
 
@@ -251,7 +250,7 @@ if __name__ == '__main__':
     print data_i
 
     ####
-    t = [Tree('0', ['A', Tree('1', ['B', 'C'])])]
+    t = [Tree('0', ['A', Tree('1', [Tree(2, ['B', 'C']), 'D'])])]
     print loader._proc(t)
     t = '0'
     print loader._proc(t)

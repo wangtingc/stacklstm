@@ -90,10 +90,10 @@ class StackLSTMDecoder(MergeLayer):
     def get_output_for(self, inputs, **kwargs):
         x, m, p, a = inputs
         
-        x = x.dimshuffle(1, 0, 2)   # seq_len, batch_size, num_units
+        x = x.dimshuffle(1, 0, 2)   # seq_len, batch_size, dim_emb
         m = m.dimshuffle(1, 0)      # seq_len, batch_size
         p = p.dimshuffle(1, 0)      # seq_len, batch_size
-        a = a.dimshuffle(1, 0)      # seq_len, batch_size, 2
+        a = a.dimshuffle(1, 0)      # seq_len, batch_size
         seq_len, batch_size, _ = x.shape
         
         # W_in_stacked for stack
@@ -171,7 +171,7 @@ class StackLSTMDecoder(MergeLayer):
         fg = self.nonlin_fg(fg)
         ag = self.nonlin_fg(ag)
         og = self.nonlin_og(og)
-        c_input = self.nonlin(c_input)
+        c_input = self.nonlin_c(c_input)
 
         c = ig*c_input + fg*prev_c + ag*ac_n
         h = og * self.nonlin(c)
