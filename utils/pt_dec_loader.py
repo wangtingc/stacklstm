@@ -48,15 +48,45 @@ class PtDecLoader(DataLoader):
             self.w_emb = load_pkl(self.data_path + 'emb.pkl')
             self.dict_size, self.dim_emb = self.w_emb.shape
         else:
-            self._load_btrees(wvec_path)
-            self.train_data = self._proc(self.train_btrees)
-            self.valid_data = self._proc(self.valid_btrees)
-            self.test_data = self._proc(self.test_btrees)
+            self._load_strees(wvec_path)
+            self.train_data = self._proc(self.train_strees)
+            self.valid_data = self._proc(self.valid_strees)
+            self.test_data = self._proc(self.test_strees)
             
             self._save(self.vocab_path, train_data_path, \
                        valid_data_path, test_data_path, False)
+ 
+    # if no data, load simplified trees, i.e. no node with single offspring 
+    # and not binarized
+    def _load_strees(self, wvec_path):
+        train_stree_path = self.data_path + 'train.stree.pkl'
+        valid_stree_path = self.data_path + 'valid.stree.pkl'
+        test_stree_path = self.data_path + 'test.stree.pkl'
 
-    
+        print(' [*] loading simplified parse trees')
+        if os.path.exists(train_stree_path):
+            self.train_strees = load_pkl(train_stree_path)
+            self.valid_strees = load_pkl(valid_stree_path)
+            self.test_strees = load_pkl(test_stree_path)
+            self.vocab = load_pkl(self.vocab_path)
+        else:
+            self._load_trees()
+            self._build_vocab(self.train_trees, self.vocab_path)
+            if os.path.exists(self.data_path + 'emb.pkl'):
+                self.w_emb = load_pkl(self.data_path + 'emb.pkl')
+            else:
+                wvec = misc.load_glove(wvec_path)
+                self._build_wemb(wvec, self.filter_by_wvec)
+            self.train_strees = self._tree_to_stree(self.train_trees, self.vocab)
+            self.valid_strees = self._tree_to_stree(self.valid_trees, self.vocab)
+            self.test_strees = self._tree_to_stree(self.test_trees, self.vocab)
+
+            save_pkl(train_stree_path, self.train_strees)
+            save_pkl(valid_stree_path, self.valid_strees)
+            save_pkl(test_stree_path, self.test_strees)
+            save_pkl(self.vocab_path, self.vocab)
+            save_pkl(self.data_path + 'emb.pkl', self.w_emb)
+
     # if no data, load binarized trees
     def _load_btrees(self, wvec_path):
         train_btree_path = self.data_path + 'train.btree.pkl'
@@ -72,8 +102,11 @@ class PtDecLoader(DataLoader):
         else:
             self._load_trees()
             self._build_vocab(self.train_trees, self.vocab_path)
-            wvec = misc.load_glove(wvec_path)
-            self._build_wemb(wvec, self.filter_by_wvec)
+            if os.path.exists(self.data_path + 'emb.pkl'):
+                self.w_emb = load_pkl(self.data_path + 'emb.pkl')
+            else:
+                wvec = misc.load_glove(wvec_path)
+                self._build_wemb(wvec, self.filter_by_wvec)
             self.train_btrees = self._tree_to_btree(self.train_trees, self.vocab)
             self.valid_btrees = self._tree_to_btree(self.valid_trees, self.vocab)
             self.test_btrees = self._tree_to_btree(self.test_trees, self.vocab)
@@ -84,7 +117,6 @@ class PtDecLoader(DataLoader):
             save_pkl(self.vocab_path, self.vocab)
             save_pkl(self.data_path + 'emb.pkl', self.w_emb)
 
-    
     # if no btree, load tree
     def _load_trees(self):
         train_tree_path = self.data_path + 'train.tree.pkl'
@@ -110,7 +142,6 @@ class PtDecLoader(DataLoader):
         else:
             self.test_trees = load_pkl(test_tree_path)
 
-    
     def _init_parser(self, parser_path, models_path, model_path):
         os.environ['STANFORD_PARSER'] = parser_path
         os.environ['STANFORD_MODELS'] = models_path
@@ -118,14 +149,12 @@ class PtDecLoader(DataLoader):
         parser = stanford.StanfordParser(model_path=model_path)
         return parser
 
-
     def _parse(self, raw_text):
         # Each sentence will be automatically tokenized and tagged by the parser
         trees = self.parser.raw_parse_sents(raw_text.split(EOS_TOKEN))
         trees = [s.next()[0] for s in trees]
         return trees
 
-    
     # exatract the words and lower them and build the vocabulary
     def _build_vocab(self, trees, vocab_path):
         words = []
@@ -134,13 +163,34 @@ class PtDecLoader(DataLoader):
 
         super(PtDecLoader, self)._build_vocab(words, vocab_path)
 
-
     # reconstruct a tree with word index
     def _replace_by_widx(self, tree, vocab):
         if isinstance(tree, Tree):
             return Tree(tree.label(), [self._replace_by_widx(s, vocab) for s in tree])
         else:
             return vocab.get(tree.lower(), 1)
+    
+    # remove the node with only one offspring
+    def _simplify_tree(self, tree):
+        if not isinstance(tree, Tree):
+            return copy.copy(tree)
+        
+        if len(tree) == 1:
+            tree = tree[0]
+            while len(tree) == 1 and isinstance(tree, Tree):
+                tree = tree[0]
+            return self._simplify_tree(tree)
+
+        new_tree = Tree(tree.label(), [self._simplify_tree(i) for i in tree])
+        return new_tree
+        
+    def _tree_to_stree(self, trees, vocab):
+        data = []
+        for tree in trees:
+            data_i = self._simplify_tree(tree)
+            data_i = self._replace_by_widx(data_i, vocab)
+            data.append(data_i)
+        return data
 
     # reconstruct an binary constituency parse tree
     def _convert_to_binary_tree(self, tree):
@@ -166,7 +216,6 @@ class PtDecLoader(DataLoader):
         
         return right
         
-
     def _tree_to_btree(self, trees, vocab):
         data = []
         for tree in trees:
@@ -175,58 +224,60 @@ class PtDecLoader(DataLoader):
             data.append(data_i)
         return data
 
-
     def _proc(self, trees):
-        x, p, a = [], [], []
+        x, p, a, y = [], [], [], []
         for tree in trees:
-            xi, pi, ai = self._proc_single(tree)
+            xi, pi, ai, yi = self._proc_single(tree)
             x.append(xi)
             p.append(pi)
             a.append(ai)
-        return x, p, a
-
+            y.append(yi)
+        return x, p, a, y
 
     def _proc_single(self, tree):
         """
         this function is used to preproc the tree data
         @ param: single tree for one sentence
-        @ rtype: x, p, f
-
-        x: output at each step, 0 for tree
+        @ rtype: x, p, a, y
+        
+        w: words, initilized with [0] (<SOS>)
+        x: inputs at each step, 0 for tree
+        y: output at each step, 0 for tree
         p: if prediction at this step
         a: father of each step
         s: stack, save all the internal state
-        q: queue for extracting f
+        q: queue for extracting a
         """
-        x, p, a, s, q = [], [], [], [], [-1]
-        self._traversal(tree, x, p, a, s, q)
+
+        w, x, y, p, a, s, q = [0], [], [], [], [], [], [-1]
+        self._traversal(tree, w, x, y, p, a, s, q)
 
         if isinstance(tree, Tree):
-            return x[1:], p[1:], a[1:]
+            return x[1:], p[1:], a[1:], y[1:]
         else:
-            return x, [1], [0]
+            return x, [1], [0], [0]
 
-
-    def _traversal(self, tree, x, p, a, s, q):
+    def _traversal(self, tree, w, x, y, p, a, s, q):
         if not isinstance(tree, Tree):
-            x.append(tree)
+            x.append(w[-1])
+            w.append(tree)
+            y.append(tree)
             p.append(1)
             a.append(q[-1])
             return
-        
+
         x.append(0)
+        y.append(0)
         p.append(0)
         a.append(q[-1])
         s.append(tree)
         q.append(len(s)-1)
 
         for i in tree:
-            self._traversal(i, x, p, a, s, q)
+            self._traversal(i, w, x, y, p, a, s, q)
 
         q.pop()
 
-
-       
 if __name__ == '__main__':
     data_path = '../data/ptb_dec/'
     parser_path = '/workspace/software/nlp-stanford/parser/stanford-parser-full-2015-04-20/stanford-parser.jar'
@@ -251,6 +302,8 @@ if __name__ == '__main__':
 
     ####
     t = [Tree('0', ['A', Tree('1', [Tree(2, ['B', 'C']), 'D'])])]
+    print loader._proc(t)
+    t = [Tree('0', ['A', Tree('1', [Tree(2, ['B', 'C']), 'D', Tree(2, ['E', 'F'])])])]
     print loader._proc(t)
     t = '0'
     print loader._proc(t)

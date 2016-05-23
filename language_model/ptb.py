@@ -90,9 +90,9 @@ def train(params):
     
         out_all, llh_all, nw_all = [], [], []
         for batch in range(num_batches_train):
-            x, p, a = it_train.next()
-            x, m, p, a = misc.prepare_ptb([x, p, a])
-            out = f_train(x, m, p, a)
+            x, p, a, y = it_train.next()
+            x, m, p, a, y = misc.prepare_ptb([x, p, a, y])
+            out = f_train(x, m, p, a, y)
             out_all.append(out)
             llh_all.append(out[0] * params['batch_size'])
             nw_all.append(np.sum(p))
@@ -106,9 +106,9 @@ def train(params):
      
         out_all, llh_all, nw_all = [], [], []
         for batch in range(num_batches_valid):
-            x, p, a = it_valid.next()
-            x, m, p, a = misc.prepare_ptb([x, p, a])
-            out = f_test(x, m, p, a)
+            x, p, a, y = it_valid.next()
+            x, m, p, a, y = misc.prepare_ptb([x, p, a, y])
+            out = f_test(x, m, p, a, y)
             out_all.append(out)
             llh_all.append(out[0] * params['batch_size'])
             nw_all.append(np.sum(p))
@@ -122,9 +122,9 @@ def train(params):
 
         out_all, llh_all, nw_all = [], [], []
         for batch in range(num_batches_test):
-            x, p, a = it_test.next()
-            x, m, p, a = misc.prepare_ptb([x, p, a])
-            out = f_test(x, m, p, a)
+            x, p, a, y = it_test.next()
+            x, m, p, a, y = misc.prepare_ptb([x, p, a, y])
+            out = f_test(x, m, p, a, y)
             out_all.append(out)
             llh_all.append(out[0] * params['batch_size'])
             nw_all.append(np.sum(p))

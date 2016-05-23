@@ -36,6 +36,7 @@ class StackLSTMLM(object):
         self.l_m = InputLayer((None, None), name='l_m') # mask
         self.l_p = InputLayer((None, None), name='l_p') # if predict
         self.l_a = InputLayer((None, None), name='l_a') # idx for ancestor in stack
+        self.l_y = InputLayer((None, None), name='l_y') # flattened output
         self.l_emb = EmbeddingLayer(self.l_x, dict_size, dim_emb, W=w_emb, name='l_emb')
         self.l_emb = DropoutLayer(self.l_emb, emb_dropout, name='l_emb_drop')
         self.l_dec = StackLSTMDecoder([self.l_emb, self.l_m, self.l_p, self.l_a,],
@@ -51,13 +52,8 @@ class StackLSTMLM(object):
 
     def _forward(self, inputs, deterministic=False):
         x, m, p, a = inputs
-        e = get_output(self.l_emb, {self.l_x: x})
 
-        # shift the embedding
-        e_shift = T.zeros_like(e)
-        e_shift = T.set_subtensor(e_shift[:,1:,:], e[:,:-1,:])
-
-        px, pp = get_output([self.l_prd_x, self.l_prd_p], {self.l_emb: e_shift,
+        px, pp = get_output([self.l_prd_x, self.l_prd_p], {self.l_x: x,
                                     self.l_m: m,
                                     self.l_p: p,
                                     self.l_a: a,},
@@ -69,12 +65,13 @@ class StackLSTMLM(object):
         m = T.matrix()
         p = T.lmatrix()
         a = T.lmatrix()
+        y = T.lmatrix()
         
         inputs = [x, m, p, a]
         px, pp = self._forward(inputs, False)
         batch_size, seq_len = x.shape
         
-        lx = objectives.categorical_crossentropy(px, x.flatten())
+        lx = objectives.categorical_crossentropy(px, y.flatten())
         lx = lx.reshape([batch_size, seq_len])
         lx = (lx * p).sum(axis=1)
         lx = lx.mean()
@@ -93,7 +90,7 @@ class StackLSTMLM(object):
         grads = updates.total_norm_constraint(grads, max_norm=20)
         update = updates.adam(grads, params, self.lr)
         
-        f_train = theano.function(inputs, [lx, lp, ppl], updates=update)
+        f_train = theano.function(inputs+[y], [lx, lp, ppl], updates=update)
         return f_train
         
     def get_f_test(self,):
@@ -101,12 +98,13 @@ class StackLSTMLM(object):
         m = T.matrix()
         p = T.lmatrix()
         a = T.lmatrix()
+        y = T.lmatrix()
          
         inputs = [x, m, p, a]
         px, pp = self._forward(inputs, True)
         batch_size, seq_len = x.shape
         
-        lx = objectives.categorical_crossentropy(px, x.flatten())
+        lx = objectives.categorical_crossentropy(px, y.flatten())
         lx = lx.reshape([batch_size, seq_len])
         lx = (lx * p).sum(axis=1)
         lx = lx.mean()
@@ -118,7 +116,7 @@ class StackLSTMLM(object):
         lp = (lp * m).sum(axis=1)
         lp = lp.mean()
 
-        f_test = theano.function(inputs, [lx, lp ,ppl])
+        f_test = theano.function(inputs+[y], [lx, lp ,ppl])
         return f_test
        
     def _l2_regularization(self,):

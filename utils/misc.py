@@ -62,10 +62,9 @@ def prepare_snli(_data):
 
     return xr, mr, ar, pr
 
-
 def prepare_ptb(_data):
     # x, predict, ancestor
-    x, p, a = _data
+    x, p, a, y = _data
     max_len = 0
     for i in x:
         max_len = max(max_len, len(i))
@@ -75,15 +74,16 @@ def prepare_ptb(_data):
     mr = np.zeros([batch_size, max_len], dtype=theano.config.floatX)
     pr = np.zeros([batch_size, max_len], dtype='int64')
     ar = np.zeros([batch_size, max_len], dtype='int64')
+    yr = np.zeros([batch_size, max_len], dtype='int64')
 
     for i in range(batch_size):
         xr[i, :len(x[i])] = x[i]
         mr[i, :len(x[i])] = 1
         pr[i, :len(x[i])] = p[i]
         ar[i, :len(x[i])] = a[i]
+        yr[i, :len(x[i])] = y[i]
 
-    return xr, mr, pr, ar
-
+    return xr, mr, pr, ar, yr
 
 def concat_sentence(s):
     x = []
@@ -116,7 +116,6 @@ def weightsinfo2str(params):
     s + '\n'
     return s
     
-
 def load_glove(filename):
     glove = {}
     f = gzip.open(filename, 'r')
