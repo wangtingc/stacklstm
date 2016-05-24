@@ -22,7 +22,8 @@ def init_params():
     params['test_period'] = 1
     params['exp_time'] = str(datetime.now().strftime('%Y%m%d-%H%M'))
     params['emb_dropout'] = 0.0
-    params['lr'] = 2e-4
+    params['lr'] = 5e-4
+    params['alpha'] = 10
     
     # paths
     params['save_dir'] = '../results/' + params['exp_time'] + '/'
@@ -55,6 +56,7 @@ def train(params):
                          w_emb=data_loader.w_emb,
                          emb_dropout=params['emb_dropout'],
                          lr=params['lr'],
+                         alpha=params['alpha'],
                          )
     
 
@@ -73,8 +75,8 @@ def train(params):
     df.write(config_info + '\n')
     lf.write(config_info + '\n')
     print(config_info)
-    df.write(weights_info)
-    lf.write(weights_info)
+    df.write(weights_info + '\n')
+    lf.write(weights_info + '\n')
     print(weights_info)
     
     num_batches_train = params['num_samples_train'] / params['batch_size']
@@ -96,7 +98,7 @@ def train(params):
             out_all.append(out)
             llh_all.append(out[0] * params['batch_size'])
             nw_all.append(np.sum(p))
-            df.write('\t[-] train: ' + str(out) + '')
+            df.write('\t[-] train: ' + str(out) + '\n')
         ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
         train_info = '\t[-] train: ' + str(np.mean(out_all, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
         print('\t[-] time:' + str(time.time() - cur))
@@ -112,7 +114,7 @@ def train(params):
             out_all.append(out)
             llh_all.append(out[0] * params['batch_size'])
             nw_all.append(np.sum(p))
-            df.write('\t[-] valid: ' + str(out) + '')
+            df.write('\t[-] valid: ' + str(out) + '\n')
         ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
         valid_info = '\t[-] valid: ' + str(np.mean(out_all, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
         print('\t[-] time:' + str(time.time() - cur))
@@ -128,7 +130,7 @@ def train(params):
             out_all.append(out)
             llh_all.append(out[0] * params['batch_size'])
             nw_all.append(np.sum(p))
-            df.write('\t[-] test: ' + str(out) + '')
+            df.write('\t[-] test: ' + str(out) + '\n')
         ppl = np.exp(np.sum(llh_all)/ np.sum(nw_all))
         test_info = '\t[-] test: ' + str(np.mean(out_all, axis=0)) + ' ' + str(np.sum(llh_all)) + ' ' + str(np.sum(nw_all)) + ' '+ str(ppl)
         print('\t[-] time:' + str(time.time() - cur))

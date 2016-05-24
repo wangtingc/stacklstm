@@ -20,6 +20,7 @@ class StackLSTMLM(object):
                  w_emb,
                  emb_dropout,
                  lr = 1e-3,
+                 alpha = 1,
                  ):
         """
         Paramters:
@@ -29,6 +30,7 @@ class StackLSTMLM(object):
         self.num_units = num_units
         self.lr = lr
         self.dict_size = dict_size
+        self.alpha = alpha
         w_emb = w_emb.astype(theano.config.floatX)
         
         # single example encoder
@@ -85,7 +87,7 @@ class StackLSTMLM(object):
         lp = lp.mean()
 
         params = self.get_params()
-        grads = theano.grad(lx+lp, params)
+        grads = theano.grad(0*lx+self.alpha*lp, params)
         grads = [T.clip(g, -10, 10) for g in grads]
         grads = updates.total_norm_constraint(grads, max_norm=20)
         update = updates.adam(grads, params, self.lr)
